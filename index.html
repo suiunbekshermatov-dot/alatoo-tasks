@@ -4,6 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Ala-Too IT & Business College — Task Tracker</title>
+  
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+
   <style>
     :root {
       --alatoo-blue: #0c2340;
@@ -29,7 +34,6 @@
     body { background: var(--bg-main); color: var(--text-main); padding: 12px; -webkit-font-smoothing: antialiased; }
     .container { max-width: 600px; margin: 0 auto; }
 
-    /* Брендовая шапка с логотипом */
     .brand-header {
       background: linear-gradient(135deg, var(--alatoo-blue) 0%, #162e52 100%);
       border-radius: 18px;
@@ -41,7 +45,6 @@
       box-shadow: var(--shadow-card);
       margin-bottom: 14px;
     }
-    
     .brand-logo-wrap {
       width: 48px;
       height: 48px;
@@ -54,13 +57,7 @@
       align-items: center;
       justify-content: center;
     }
-    
-    .brand-logo-svg {
-      width: 100%;
-      height: 100%;
-      border-radius: 50%;
-    }
-
+    .brand-logo-svg { width: 100%; height: 100%; border-radius: 50%; }
     .brand-info { flex: 1; }
     .brand-title { font-size: 15px; font-weight: 700; line-height: 1.2; }
     .brand-sub { font-size: 11px; opacity: 0.85; margin-top: 2px; text-transform: uppercase; letter-spacing: 0.5px; color: #cbd5e1; }
@@ -76,6 +73,20 @@
       border: 1px solid rgba(255, 255, 255, 0.25);
       white-space: nowrap;
     }
+
+    .status-badge-cloud {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 11px;
+      background: #e0f2fe;
+      color: #0369a1;
+      padding: 3px 8px;
+      border-radius: 12px;
+      font-weight: 600;
+      margin-bottom: 10px;
+    }
+    .status-dot { width: 7px; height: 7px; background: #0284c7; border-radius: 50%; }
 
     .card {
       background: var(--card-bg);
@@ -98,7 +109,6 @@
       margin-bottom: 10px;
       outline: none;
     }
-    select:focus, input:focus, textarea:focus { border-color: var(--alatoo-blue-light); background: #ffffff; }
 
     .filter-tabs { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; margin-bottom: 10px; }
     .filter-btn {
@@ -165,7 +175,7 @@
       background: #fffdf5;
       border-left: 3px solid var(--warning-btn);
       border-radius: 6px;
-      padding: 6px 10px;
+      padding: 8px 10px;
       font-size: 12px;
       color: #92400e;
       margin-bottom: 10px;
@@ -206,12 +216,9 @@
       <svg class="brand-logo-svg" viewBox="0 0 100 100">
         <circle cx="50" cy="50" r="48" fill="#0c2340" stroke="#ffffff" stroke-width="2"/>
         <circle cx="50" cy="50" r="36" fill="#c8102e"/>
-        <!-- Солнце -->
         <circle cx="42" cy="30" r="4" fill="#ffffff"/>
-        <!-- Горы Ала-Тоо -->
         <polygon points="26,50 44,35 62,50" fill="#ffffff"/>
         <polygon points="46,50 64,32 82,50" fill="#ffffff"/>
-        <!-- Дороги / Полосы внизу -->
         <path d="M 22 62 Q 50 56 78 62" stroke="#ffffff" stroke-width="2.5" fill="none"/>
         <path d="M 28 72 Q 50 60 72 72" stroke="#ffffff" stroke-width="2.5" fill="none"/>
         <path d="M 36 82 Q 50 64 64 82" stroke="#ffffff" stroke-width="2.5" fill="none"/>
@@ -222,6 +229,10 @@
       <div class="brand-sub">IT & Business College</div>
     </div>
     <a href="https://aiuspo.edupage.org/timetable/" target="_blank" class="btn-edupage">📅 EduPage</a>
+  </div>
+
+  <div style="display:flex; justify-content:space-between; align-items:center;">
+    <div class="status-badge-cloud"><span class="status-dot"></span> Облако: Онлайн</div>
   </div>
 
   <div class="card">
@@ -256,6 +267,7 @@
     <button class="filter-btn" onclick="setFilter('pending', this)">В работе (<span id="cntPending">0</span>)</button>
     <button class="filter-btn" onclick="setFilter('overdue', this)" style="color:var(--alatoo-red);">Просрочено (<span id="cntOverdue">0</span>)</button>
     <button class="filter-btn" onclick="setFilter('done', this)">Выполнено (<span id="cntDone">0</span>)</button>
+    <button class="filter-btn" onclick="setFilter('logs', this)" style="background:#fff7ed; color:#c2410c;">📜 Журнал логов (<span id="cntLogs">0</span>)</button>
   </div>
 
   <div id="tasksList"></div>
@@ -281,10 +293,25 @@
 </div>
 
 <script>
+  // Инициализация Firebase с вашими ключами
+  const firebaseConfig = {
+    apiKey: "AIzaSyAowQPFwo5ywZ1Sg-Y4WgtqlzVvE9Eyh0M",
+    authDomain: "alatoo-college-tasks.firebaseapp.com",
+    projectId: "alatoo-college-tasks",
+    storageBucket: "alatoo-college-tasks.firebasestorage.app",
+    messagingSenderId: "313809401509",
+    appId: "1:313809401509:web:2b93e856c87dd064c67f4c"
+  };
+
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
+
   const DIRECTOR_PIN = "1234";
   let currentFilter = 'all';
+  let staffList = [];
+  let tasks = [];
 
-  let staffList = JSON.parse(localStorage.getItem("alatoo_brand_staff")) || [
+  const defaultStaff = [
     "Зав. IT-отделением",
     "Учебно-методический отдел",
     "Преподаватель: Султанов А.",
@@ -292,22 +319,28 @@
     "Кураторская служба"
   ];
 
-  let tasks = JSON.parse(localStorage.getItem("alatoo_brand_tasks")) || [
-    {
-      id: 1,
-      title: "Загрузка КТП и рабочих программ в EduPage",
-      desc: "Проверить привязку силлабусов и тем занятий к расписанию колледжа.",
-      assignee: "Преподаватель: Султанов А.",
-      deadline: "2026-08-28",
-      status: "pending",
-      history: []
+  // Синхронизация состава преподавателей в реальном времени
+  db.collection("settings").doc("staff").onSnapshot(doc => {
+    if (doc.exists && doc.data().list) {
+      staffList = doc.data().list;
+    } else {
+      staffList = defaultStaff;
+      db.collection("settings").doc("staff").set({ list: defaultStaff });
     }
-  ];
+    updateStaffDropdowns();
+    renderApp();
+  });
 
-  function syncData() {
-    localStorage.setItem("alatoo_brand_staff", JSON.stringify(staffList));
-    localStorage.setItem("alatoo_brand_tasks", JSON.stringify(tasks));
-  }
+  // Синхронизация задач в реальном времени
+  db.collection("tasks").onSnapshot(snapshot => {
+    tasks = [];
+    snapshot.forEach(doc => {
+      tasks.push({ id: doc.id, ...doc.data() });
+    });
+    // Сортировка по времени создания
+    tasks.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+    renderApp();
+  });
 
   function handleRoleChange() {
     const user = document.getElementById("userSelector").value;
@@ -349,19 +382,15 @@
     const name = input.value.trim();
     if (name && !staffList.includes(name)) {
       staffList.push(name);
-      syncData();
-      updateStaffDropdowns();
+      db.collection("settings").doc("staff").set({ list: staffList });
       input.value = "";
-      renderApp();
     }
   }
 
   function removeStaff(idx) {
     if (confirm(`Удалить "${staffList[idx]}"?`)) {
       staffList.splice(idx, 1);
-      syncData();
-      updateStaffDropdowns();
-      renderApp();
+      db.collection("settings").doc("staff").set({ list: staffList });
     }
   }
 
@@ -387,18 +416,52 @@
 
     const baseList = isDirector ? tasks : tasks.filter(t => t.assignee === user);
 
+    let totalLogsCount = 0;
+    baseList.forEach(t => { if (t.history) totalLogsCount += t.history.length; });
+
     document.getElementById("cntAll").textContent = baseList.length;
     document.getElementById("cntPending").textContent = baseList.filter(t => t.status !== "done").length;
     document.getElementById("cntOverdue").textContent = baseList.filter(t => isOverdue(t.deadline, t.status)).length;
     document.getElementById("cntDone").textContent = baseList.filter(t => t.status === "done").length;
+    document.getElementById("cntLogs").textContent = totalLogsCount;
+
+    const container = document.getElementById("tasksList");
+    container.innerHTML = "";
+
+    if (currentFilter === 'logs') {
+      let logsHtml = "";
+      baseList.forEach(t => {
+        if (t.history && t.history.length > 0) {
+          t.history.forEach(h => {
+            logsHtml += `
+              <div class="task-card" style="border-left: 4px solid var(--warning-btn);">
+                <div class="task-top">
+                  <span>👤 <b>${t.assignee}</b></span>
+                  <span>📅 Зафиксировано: <b>${h.date}</b></span>
+                </div>
+                <div class="task-title" style="margin-bottom:6px;">${t.title}</div>
+                <div class="history-card">
+                  <b>Срок перенесен:</b> с ${h.oldDate} ➔ на <b>${h.newDate}</b><br>
+                  <b>Причина:</b> <i>${h.reason}</i>
+                </div>
+              </div>
+            `;
+          });
+        }
+      });
+
+      if (!logsHtml) {
+        container.innerHTML = `<div style="background:#fff; border:1px solid var(--border); border-radius:14px; padding:24px; text-align:center; color:var(--text-muted); font-size:13px;">Журнал переносов пуст</div>`;
+      } else {
+        container.innerHTML = logsHtml;
+      }
+      return;
+    }
 
     let displayTasks = baseList;
     if (currentFilter === 'pending') displayTasks = baseList.filter(t => t.status !== 'done');
     if (currentFilter === 'overdue') displayTasks = baseList.filter(t => isOverdue(t.deadline, t.status));
     if (currentFilter === 'done') displayTasks = baseList.filter(t => t.status === 'done');
-
-    const container = document.getElementById("tasksList");
-    container.innerHTML = "";
 
     if (displayTasks.length === 0) {
       container.innerHTML = `<div style="background:#fff; border:1px solid var(--border); border-radius:14px; padding:24px; text-align:center; color:var(--text-muted); font-size:13px;">Нет поручений в этой категории</div>`;
@@ -412,19 +475,22 @@
       else if (overdue) badge = `<span class="badge badge-overdue">🚨 Просрочено</span>`;
       else if (t.status === "delayed") badge = `<span class="badge badge-delayed">Перенесено</span>`;
 
-      let historyLog = t.history.map(h => `
-        <div class="history-card">
-          <b>Перенос на ${h.newDate}</b> (${h.date})<br>
-          <i>Причина: ${h.reason}</i>
-        </div>
-      `).join("");
+      let historyLog = "";
+      if (t.history && t.history.length > 0) {
+        historyLog = t.history.map(h => `
+          <div class="history-card">
+            <b>📜 Лог переноса (на ${h.newDate}):</b><br>
+            <i>Причина: ${h.reason}</i>
+          </div>
+        `).join("");
+      }
 
       let actionButtons = "";
       if (t.status !== "done") {
         actionButtons = `
           <div class="btn-actions">
-            <button class="btn-done" onclick="finishTask(${t.id})">Выполнил</button>
-            <button class="btn-delay" onclick="openDelaySheet(${t.id})">Не выполнил</button>
+            <button class="btn-done" onclick="finishTask('${t.id}')">Выполнил</button>
+            <button class="btn-delay" onclick="openDelaySheet('${t.id}')">Не выполнил</button>
           </div>
         `;
       }
@@ -451,27 +517,20 @@
   function createTask(e) {
     e.preventDefault();
     const newTask = {
-      id: Date.now(),
       title: document.getElementById("tTitle").value,
       assignee: document.getElementById("tAssignee").value,
       deadline: document.getElementById("tDeadline").value,
       desc: document.getElementById("tDesc").value,
       status: "pending",
-      history: []
+      history: [],
+      createdAt: Date.now()
     };
-    tasks.unshift(newTask);
-    syncData();
-    renderApp();
+    db.collection("tasks").add(newTask);
     document.getElementById("taskCreateForm").reset();
   }
 
   function finishTask(id) {
-    const t = tasks.find(x => x.id === id);
-    if (t) {
-      t.status = "done";
-      syncData();
-      renderApp();
-    }
+    db.collection("tasks").doc(id).update({ status: "done" });
   }
 
   function openDelaySheet(id) {
@@ -486,28 +545,28 @@
 
   function saveDelay(e) {
     e.preventDefault();
-    const id = Number(document.getElementById("delayId").value);
+    const id = document.getElementById("delayId").value;
     const newDate = document.getElementById("newDateVal").value;
     const reason = document.getElementById("reasonVal").value;
 
     const t = tasks.find(x => x.id === id);
     if (t) {
-      t.history.push({
+      const history = t.history || [];
+      history.push({
         oldDate: t.deadline,
         newDate: newDate,
         reason: reason,
         date: new Date().toLocaleDateString()
       });
-      t.deadline = newDate;
-      t.status = "delayed";
-      syncData();
-      renderApp();
+
+      db.collection("tasks").doc(id).update({
+        deadline: newDate,
+        status: "delayed",
+        history: history
+      });
       closeDelaySheet();
     }
   }
-
-  updateStaffDropdowns();
-  renderApp();
 </script>
 
 </body>
