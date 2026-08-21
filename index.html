@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Ala-Too IT & Business College — Task Tracker</title>
+  <style>
+    :root {
+      --alatoo-blue: #0c2340;
+      --alatoo-blue-light: #1e3a8a;
+      --alatoo-red: #c8102e;
+      --alatoo-red-soft: #fee2e2;
+      --bg-main: #f8fafc;
+      --card-bg: #ffffff;
+      --text-main: #0f172a;
+      --text-muted: #64748b;
+      --border: #e2e8f0;
+      --success-bg: #ecfdf5;
+      --success-text: #065f46;
+      --success-btn: #10b981;
+      --warning-bg: #fffbeb;
+      --warning-text: #92400e;
+      --warning-btn: #f59e0b;
+      --shadow-sm: 0 1px 3px rgba(0,0,0,0.06);
+      --shadow-card: 0 4px 6px -1px rgba(12, 35, 64, 0.08), 0 2px 4px -2px rgba(12, 35, 64, 0.05);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { background: var(--bg-main); color: var(--text-main); padding: 12px; -webkit-font-smoothing: antialiased; }
+    .container { max-width: 600px; margin: 0 auto; }
+
+    /* Брендовая шапка */
+    .brand-header {
+      background: linear-gradient(135deg, var(--alatoo-blue) 0%, #162e52 100%);
+      border-radius: 18px;
+      padding: 14px 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      color: #ffffff;
+      box-shadow: var(--shadow-card);
+      margin-bottom: 14px;
+    }
+    .brand-logo {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: #ffffff;
+      padding: 2px;
+      flex-shrink: 0;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+      object-fit: cover;
+    }
+    .brand-info { flex: 1; }
+    .brand-title { font-size: 15px; font-weight: 700; line-height: 1.2; letter-spacing: -0.2px; }
+    .brand-sub { font-size: 11px; opacity: 0.85; margin-top: 2px; text-transform: uppercase; letter-spacing: 0.5px; color: #cbd5e1; }
+    .btn-edupage {
+      background: rgba(255, 255, 255, 0.15);
+      backdrop-filter: blur(4px);
+      color: #ffffff;
+      text-decoration: none;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 7px 10px;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      white-space: nowrap;
+    }
+
+    /* Карточки */
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 15px;
+      box-shadow: var(--shadow-sm);
+      margin-bottom: 12px;
+    }
+    .card label { display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); margin-bottom: 6px; }
+
+    select, input, textarea {
+      width: 100%;
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 14px;
+      font-size: 14px;
+      color: var(--text-main);
+      margin-bottom: 10px;
+      outline: none;
+    }
+    select:focus, input:focus, textarea:focus { border-color: var(--alatoo-blue-light); background: #ffffff; }
+
+    /* Табы фильтров */
+    .filter-tabs { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; margin-bottom: 10px; }
+    .filter-btn {
+      background: #f1f5f9;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      white-space: nowrap;
+      cursor: pointer;
+    }
+    .filter-btn.active { background: var(--alatoo-blue); color: #ffffff; border-color: var(--alatoo-blue); }
+
+    /* Кнопки */
+    button {
+      border: none;
+      border-radius: 10px;
+      padding: 12px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      width: 100%;
+    }
+    .btn-main { background: var(--alatoo-blue); color: #ffffff; }
+    .btn-done { background: var(--success-btn); color: #ffffff; flex: 1; }
+    .btn-delay { background: var(--warning-btn); color: #ffffff; flex: 1; }
+    .btn-small { padding: 6px 10px; font-size: 12px; border-radius: 8px; width: auto; }
+
+    /* Теги сотрудников */
+    .staff-tag-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+    .staff-tag {
+      background: #f1f5f9;
+      border: 1px solid var(--border);
+      padding: 4px 10px;
+      border-radius: 14px;
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .staff-tag span { cursor: pointer; color: var(--alatoo-red); font-weight: bold; }
+
+    /* Карточки дел */
+    .task-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 14px;
+      box-shadow: var(--shadow-sm);
+      margin-bottom: 10px;
+    }
+    .task-card.is-overdue { border-left: 4px solid var(--alatoo-red); }
+    .task-top { display: flex; justify-content: space-between; font-size: 12px; color: var(--text-muted); margin-bottom: 6px; }
+    .task-title-row { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 4px; }
+    .task-title { font-size: 15px; font-weight: 700; color: var(--text-main); }
+    .task-desc { font-size: 13px; color: #475569; line-height: 1.4; margin-bottom: 10px; }
+
+    .badge { padding: 3px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; white-space: nowrap; }
+    .badge-pending { background: #f1f5f9; color: #475569; }
+    .badge-done { background: var(--success-bg); color: var(--success-text); }
+    .badge-delayed { background: var(--warning-bg); color: var(--warning-text); }
+    .badge-overdue { background: var(--alatoo-red-soft); color: var(--alatoo-red); }
+
+    .history-card {
+      background: #fffdf5;
+      border-left: 3px solid var(--warning-btn);
+      border-radius: 6px;
+      padding: 6px 10px;
+      font-size: 12px;
+      color: #92400e;
+      margin-bottom: 10px;
+    }
+
+    .btn-actions { display: flex; gap: 8px; }
+
+    /* Нижняя шторка (Bottom Sheet) */
+    .modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(12, 35, 64, 0.45);
+      backdrop-filter: blur(3px);
+      align-items: flex-end;
+      justify-content: center;
+      z-index: 100;
+    }
+    .modal.active { display: flex; }
+    .sheet {
+      background: #ffffff;
+      width: 100%;
+      max-width: 600px;
+      border-radius: 20px 20px 0 0;
+      padding: 20px;
+      box-shadow: 0 -4px 16px rgba(0,0,0,0.1);
+      animation: slideIn 0.22s ease-out;
+    }
+    @keyframes slideIn { from { transform: translateY(100%); } to { transform: translateY(0); } }
+  </style>
+</head>
+<body>
+
+<div class="container">
+
+  <!-- Фирменная шапка Ala-Too -->
+  <div class="brand-header">
+    <img src="logo.png" alt="Ala-Too Logo" class="brand-logo" onerror="this.src='https://ui-avatars.com/api/?name=Ala+Too&background=0c2340&color=fff&rounded=true'" />
+    <div class="brand-info">
+      <div class="brand-title">Ala-Too College</div>
+      <div class="brand-sub">IT & Business College</div>
+    </div>
+    <a href="https://aiuspo.edupage.org/timetable/" target="_blank" class="btn-edupage">📅 EduPage</a>
+  </div>
+
+  <!-- Селектор пользователя -->
+  <div class="card">
+    <label>АКТИВНЫЙ ПРОФИЛЬ:</label>
+    <select id="userSelector" onchange="handleRoleChange()"></select>
+  </div>
+
+  <!-- Блок Директора: Управление коллективом -->
+  <div class="card" id="staffManagementBlock" style="display:none;">
+    <label>СОСТАВ КОЛЛЕДЖА (ОТДЕЛЕНИЯ / ПРЕПОДАВАТЕЛИ):</label>
+    <div style="display: flex; gap: 8px;">
+      <input type="text" id="newStaffName" placeholder="ФИО преподавателя или отдел..." style="margin-bottom: 0;" />
+      <button type="button" class="btn-main btn-small" onclick="addNewStaff()">Добавить</button>
+    </div>
+    <div class="staff-tag-list" id="staffTagList"></div>
+  </div>
+
+  <!-- Блок Директора: Новое поручение -->
+  <div class="card" id="directorBlock" style="display:none;">
+    <h2 style="font-size:15px; font-weight:700; color:var(--alatoo-blue); margin-bottom:10px;">➕ Новое поручение директора</h2>
+    <form id="taskCreateForm" onsubmit="createTask(event)">
+      <input type="text" id="tTitle" placeholder="Тема поручения..." required />
+      <label>ОТВЕТСТВЕННЫЙ:</label>
+      <select id="tAssignee" required></select>
+      <label>СРОК СДАЧИ (ДЕДЛАЙН):</label>
+      <input type="date" id="tDeadline" required />
+      <textarea id="tDesc" rows="2" placeholder="Детали, указания и требования к результату..."></textarea>
+      <button type="submit" class="btn-main">Назначить поручение</button>
+    </form>
+  </div>
+
+  <!-- Фильтры -->
+  <div class="filter-tabs">
+    <button class="filter-btn active" onclick="setFilter('all', this)">Все (<span id="cntAll">0</span>)</button>
+    <button class="filter-btn" onclick="setFilter('pending', this)">В работе (<span id="cntPending">0</span>)</button>
+    <button class="filter-btn" onclick="setFilter('overdue', this)" style="color:var(--alatoo-red);">Просрочено (<span id="cntOverdue">0</span>)</button>
+    <button class="filter-btn" onclick="setFilter('done', this)">Выполнено (<span id="cntDone">0</span>)</button>
+  </div>
+
+  <!-- Реестр поручений -->
+  <div id="tasksList"></div>
+
+</div>
+
+<!-- Шторка фиксации причины -->
+<div class="modal" id="delaySheet">
+  <div class="sheet">
+    <h3 style="font-size: 16px; font-weight: 700; color:var(--alatoo-blue); margin-bottom: 10px;">⚠️ Фиксация причины переноса</h3>
+    <form id="delayForm" onsubmit="saveDelay(event)">
+      <input type="hidden" id="delayId" />
+      <label>Новый дедлайн:</label>
+      <input type="date" id="newDateVal" required />
+      <label>Причина невыполнения в срок (обязательно):</label>
+      <textarea id="reasonVal" rows="3" placeholder="Укажите объективную причину задержки..." required></textarea>
+      <div style="display: flex; gap: 8px;">
+        <button type="button" onclick="closeDelaySheet()" style="background: #e2e8f0; color: #475569;">Отмена</button>
+        <button type="submit" class="btn-delay">Зафиксировать</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  const DIRECTOR_PIN = "1234";
+  let currentFilter = 'all';
+
+  let staffList = JSON.parse(localStorage.getItem("alatoo_brand_staff")) || [
+    "Зав. IT-отделением",
+    "Учебно-методический отдел",
+    "Преподаватель: Султанов А.",
+    "Преподаватель: Исмаилова М.",
+    "Кураторская служба"
+  ];
+
+  let tasks = JSON.parse(localStorage.getItem("alatoo_brand_tasks")) || [
+    {
+      id: 1,
+      title: "Загрузка КТП и рабочих программ в EduPage",
+      desc: "Проверить привязку силлабусов и тем занятий к расписанию колледжа.",
+      assignee: "Преподаватель: Султанов А.",
+      deadline: "2026-08-28",
+      status: "pending",
+      history: []
+    }
+  ];
+
+  function syncData() {
+    localStorage.setItem("alatoo_brand_staff", JSON.stringify(staffList));
+    localStorage.setItem("alatoo_brand_tasks", JSON.stringify(tasks));
+  }
+
+  function handleRoleChange() {
+    const user = document.getElementById("userSelector").value;
+    if (user === "Директор") {
+      const pin = prompt("Введите PIN-код директора:");
+      if (pin !== DIRECTOR_PIN) {
+        alert("Неверный PIN-код!");
+        document.getElementById("userSelector").value = staffList[0] || "";
+        renderApp();
+        return;
+      }
+    }
+    renderApp();
+  }
+
+  function updateStaffDropdowns() {
+    const userSelector = document.getElementById("userSelector");
+    const taskAssignee = document.getElementById("tAssignee");
+    const current = userSelector.value || "Директор";
+
+    userSelector.innerHTML = `<option value="Директор">🎓 Директор колледжа</option>`;
+    staffList.forEach(name => {
+      userSelector.innerHTML += `<option value="${name}">👤 ${name}</option>`;
+    });
+    userSelector.value = current;
+
+    taskAssignee.innerHTML = "";
+    staffList.forEach(name => {
+      taskAssignee.innerHTML += `<option value="${name}">${name}</option>`;
+    });
+
+    document.getElementById("staffTagList").innerHTML = staffList.map((name, idx) => `
+      <div class="staff-tag">${name} <span onclick="removeStaff(${idx})">×</span></div>
+    `).join("");
+  }
+
+  function addNewStaff() {
+    const input = document.getElementById("newStaffName");
+    const name = input.value.trim();
+    if (name && !staffList.includes(name)) {
+      staffList.push(name);
+      syncData();
+      updateStaffDropdowns();
+      input.value = "";
+      renderApp();
+    }
+  }
+
+  function removeStaff(idx) {
+    if (confirm(`Удалить "${staffList[idx]}"?`)) {
+      staffList.splice(idx, 1);
+      syncData();
+      updateStaffDropdowns();
+      renderApp();
+    }
+  }
+
+  function setFilter(filter, btn) {
+    currentFilter = filter;
+    document.querySelectorAll(".filter-btn").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    renderApp();
+  }
+
+  function isOverdue(deadlineStr, status) {
+    if (status === "done") return false;
+    const today = new Date().toISOString().split("T")[0];
+    return deadlineStr < today;
+  }
+
+  function renderApp() {
+    const user = document.getElementById("userSelector").value;
+    const isDirector = (user === "Директор");
+
+    document.getElementById("directorBlock").style.display = isDirector ? "block" : "none";
+    document.getElementById("staffManagementBlock").style.display = isDirector ? "block" : "none";
+
+    const baseList = isDirector ? tasks : tasks.filter(t => t.assignee === user);
+
+    document.getElementById("cntAll").textContent = baseList.length;
+    document.getElementById("cntPending").textContent = baseList.filter(t => t.status !== "done").length;
+    document.getElementById("cntOverdue").textContent = baseList.filter(t => isOverdue(t.deadline, t.status)).length;
+    document.getElementById("cntDone").textContent = baseList.filter(t => t.status === "done").length;
+
+    let displayTasks = baseList;
+    if (currentFilter === 'pending') displayTasks = baseList.filter(t => t.status !== 'done');
+    if (currentFilter === 'overdue') displayTasks = baseList.filter(t => isOverdue(t.deadline, t.status));
+    if (currentFilter === 'done') displayTasks = baseList.filter(t => t.status === 'done');
+
+    const container = document.getElementById("tasksList");
+    container.innerHTML = "";
+
+    if (displayTasks.length === 0) {
+      container.innerHTML = `<div style="background:#fff; border:1px solid var(--border); border-radius:14px; padding:24px; text-align:center; color:var(--text-muted); font-size:13px;">Нет поручений в этой категории</div>`;
+      return;
+    }
+
+    displayTasks.forEach(t => {
+      const overdue = isOverdue(t.deadline, t.status);
+      let badge = `<span class="badge badge-pending">В процессе</span>`;
+      if (t.status === "done") badge = `<span class="badge badge-done">✓ Выполнено</span>`;
+      else if (overdue) badge = `<span class="badge badge-overdue">🚨 Просрочено</span>`;
+      else if (t.status === "delayed") badge = `<span class="badge badge-delayed">Перенесено</span>`;
+
+      let historyLog = t.history.map(h => `
+        <div class="history-card">
+          <b>Перенос на ${h.newDate}</b> (${h.date})<br>
+          <i>Причина: ${h.reason}</i>
+        </div>
+      `).join("");
+
+      let actionButtons = "";
+      if (t.status !== "done") {
+        actionButtons = `
+          <div class="btn-actions">
+            <button class="btn-done" onclick="finishTask(${t.id})">Выполнил</button>
+            <button class="btn-delay" onclick="openDelaySheet(${t.id})">Не выполнил</button>
+          </div>
+        `;
+      }
+
+      const card = document.createElement("div");
+      card.className = `task-card ${overdue ? 'is-overdue' : ''}`;
+      card.innerHTML = `
+        <div class="task-top">
+          <span>👤 <b>${t.assignee}</b></span>
+          <span>📅 Дедлайн: <b>${t.deadline}</b></span>
+        </div>
+        <div class="task-title-row">
+          <div class="task-title">${t.title}</div>
+          <div>${badge}</div>
+        </div>
+        <div class="task-desc">${t.desc || "Без описания"}</div>
+        ${historyLog}
+        ${actionButtons}
+      `;
+      container.appendChild(card);
+    });
+  }
+
+  function createTask(e) {
+    e.preventDefault();
+    const newTask = {
+      id: Date.now(),
+      title: document.getElementById("tTitle").value,
+      assignee: document.getElementById("tAssignee").value,
+      deadline: document.getElementById("tDeadline").value,
+      desc: document.getElementById("tDesc").value,
+      status: "pending",
+      history: []
+    };
+    tasks.unshift(newTask);
+    syncData();
+    renderApp();
+    document.getElementById("taskCreateForm").reset();
+  }
+
+  function finishTask(id) {
+    const t = tasks.find(x => x.id === id);
+    if (t) {
+      t.status = "done";
+      syncData();
+      renderApp();
+    }
+  }
+
+  function openDelaySheet(id) {
+    document.getElementById("delayId").value = id;
+    document.getElementById("delaySheet").classList.add("active");
+  }
+
+  function closeDelaySheet() {
+    document.getElementById("delaySheet").classList.remove("active");
+    document.getElementById("delayForm").reset();
+  }
+
+  function saveDelay(e) {
+    e.preventDefault();
+    const id = Number(document.getElementById("delayId").value);
+    const newDate = document.getElementById("newDateVal").value;
+    const reason = document.getElementById("reasonVal").value;
+
+    const t = tasks.find(x => x.id === id);
+    if (t) {
+      t.history.push({
+        oldDate: t.deadline,
+        newDate: newDate,
+        reason: reason,
+        date: new Date().toLocaleDateString()
+      });
+      t.deadline = newDate;
+      t.status = "delayed";
+      syncData();
+      renderApp();
+      closeDelaySheet();
+    }
+  }
+
+  updateStaffDropdowns();
+  renderApp();
+</script>
+
+</body>
+</html>
