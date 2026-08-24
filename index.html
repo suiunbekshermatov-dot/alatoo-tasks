@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="author" content="Шерматов Сүйүнбек">
   <title>Ala-Too IT & Business College — Task Tracker</title>
   
   <!-- PWA & Mobile App Settings -->
@@ -97,6 +98,16 @@
       padding: 8px 12px;
       margin-bottom: 12px;
       font-size: 13px;
+    }
+    .user-panel-btns { display: flex; gap: 6px; }
+    .btn-profile-gear {
+      background: #f1f5f9;
+      color: var(--alatoo-blue);
+      border: 1px solid var(--border);
+      padding: 4px 8px;
+      border-radius: 8px;
+      font-size: 12px;
+      cursor: pointer;
     }
     .btn-logout {
       background: #f1f5f9;
@@ -211,7 +222,17 @@
       text-decoration: underline;
     }
 
-    /* Модальное окно */
+    /* Подвал */
+    .app-footer {
+      text-align: center;
+      padding: 20px 10px 10px 10px;
+      font-size: 12px;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+    .app-footer b { color: var(--alatoo-blue); }
+
+    /* Модальные окна */
     .modal {
       display: none;
       position: fixed;
@@ -260,7 +281,7 @@
     <a href="https://aiuspo.edupage.org/timetable/" target="_blank" class="btn-edupage">📅 EduPage</a>
   </div>
 
-  <!-- Блок Авторизации (если не залогинен) -->
+  <!-- Блок Авторизации -->
   <div id="authSection" class="auth-box">
     <h2 id="authTitle" style="font-size:16px; font-weight:700; color:var(--alatoo-blue); margin-bottom:12px; text-align:center;">Вход в систему</h2>
     
@@ -285,15 +306,18 @@
     <div class="auth-toggle" id="authToggleText" onclick="toggleAuthMode()">Нет аккаунта? Зарегистрироваться</div>
   </div>
 
-  <!-- Основной интерфейс приложения (после входа) -->
+  <!-- Основной интерфейс -->
   <div id="appSection" style="display:none;">
     
     <div class="user-panel">
       <div>
-        Вы вошли как: <b id="userLabel">...</b> 
+        👤 <b id="userLabel">...</b> 
         <span id="userRoleBadge" class="badge badge-pending" style="margin-left:4px;"></span>
       </div>
-      <button class="btn-logout" onclick="logout()">Выйти</button>
+      <div class="user-panel-btns">
+        <button class="btn-profile-gear" onclick="openProfileSheet()" title="Настройки профиля">⚙️ Профиль</button>
+        <button class="btn-logout" onclick="logout()">Выйти</button>
+      </div>
     </div>
 
     <!-- Блок создания поручений для Директора -->
@@ -322,9 +346,37 @@
     <div id="tasksList"></div>
   </div>
 
+  <!-- Футер -->
+  <footer class="app-footer">
+    <div>Ala-Too IT & Business College © 2026</div>
+    <div>Разработано: <b>Шерматов Сүйүнбек</b></div>
+  </footer>
+
 </div>
 
-<!-- Шторка фиксации причины -->
+<!-- Шторка настроек профиля (Смена ФИО и пароля) -->
+<div class="modal" id="profileSheet">
+  <div class="sheet">
+    <h3 style="font-size: 16px; font-weight: 700; color:var(--alatoo-blue); margin-bottom: 12px;">⚙️ Мой профиль</h3>
+    
+    <label>ИЗМЕНИТЬ ФИО / ДОЛЖНОСТЬ:</label>
+    <input type="text" id="profileNameVal" placeholder="Введите новое ФИО..." />
+    <button type="button" class="btn-main" onclick="updateDisplayName()" style="margin-bottom:14px;">Сохранить ФИО</button>
+
+    <label>БЕЗОПАСНОСТЬ (ПАРОЛЬ):</label>
+    <button type="button" onclick="sendPasswordReset()" style="background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd; margin-bottom:10px;">
+      🔑 Отправить ссылку для сброса пароля на Email
+    </button>
+    
+    <button type="button" onclick="requestNotificationAccess()" style="background:#f1f5f9; color:#334155; margin-bottom:12px;">
+      🔔 Включить push-уведомления
+    </button>
+
+    <button type="button" onclick="closeProfileSheet()" style="background: #e2e8f0; color: #475569;">Закрыть</button>
+  </div>
+</div>
+
+<!-- Шторка фиксации причины переноса -->
 <div class="modal" id="delaySheet">
   <div class="sheet">
     <h3 style="font-size: 16px; font-weight: 700; color:var(--alatoo-blue); margin-bottom: 10px;">⚠️ Фиксация причины переноса</h3>
@@ -343,7 +395,6 @@
 </div>
 
 <script>
-  // Конфигурация Firebase
   const firebaseConfig = {
     apiKey: "AIzaSyAowQPFwo5ywZ1Sg-Y4WgtqlzVvE9Eyh0M",
     authDomain: "alatoo-college-tasks.firebaseapp.com",
@@ -362,8 +413,8 @@
   let currentFilter = 'all';
   let tasks = [];
   let allUsers = [];
+  let isInitialLoad = true;
 
-  // Переключение между Входом и Регистрацией
   function toggleAuthMode() {
     isRegisterMode = !isRegisterMode;
     document.getElementById("authTitle").textContent = isRegisterMode ? "Регистрация сотрудника" : "Вход в систему";
@@ -372,7 +423,6 @@
     document.getElementById("authToggleText").textContent = isRegisterMode ? "Уже есть аккаунт? Войти" : "Нет аккаунта? Зарегистрироваться";
   }
 
-  // Обработка Входа / Регистрации
   async function handleAuth() {
     const email = document.getElementById("authEmail").value.trim();
     const password = document.getElementById("authPassword").value.trim();
@@ -395,7 +445,6 @@
         const userCredential = await auth.createUserWithEmailAndPassword(email, password);
         const user = userCredential.user;
 
-        // Сохраняем профиль в Firestore
         await db.collection("users").doc(user.uid).set({
           name: name,
           email: email,
@@ -411,12 +460,10 @@
     }
   }
 
-  // Выход из системы
   function logout() {
     auth.signOut();
   }
 
-  // Отслеживание состояния входа
   auth.onAuthStateChanged(async (user) => {
     if (user) {
       const userDoc = await db.collection("users").doc(user.uid).get();
@@ -439,12 +486,73 @@
     }
   });
 
-  // Загрузка списка пользователей и задач
+  // Управление профилем (Смена ФИО и сброс пароля)
+  function openProfileSheet() {
+    document.getElementById("profileNameVal").value = currentUserProfile.name || "";
+    document.getElementById("profileSheet").classList.add("active");
+  }
+
+  function closeProfileSheet() {
+    document.getElementById("profileSheet").classList.remove("active");
+  }
+
+  async function updateDisplayName() {
+    const newName = document.getElementById("profileNameVal").value.trim();
+    if (!newName) return alert("ФИО не может быть пустым");
+
+    try {
+      await db.collection("users").doc(currentUserProfile.uid).update({ name: newName });
+      currentUserProfile.name = newName;
+      document.getElementById("userLabel").textContent = newName;
+      alert("✅ Ваше ФИО успешно обновлено!");
+      closeProfileSheet();
+      renderApp();
+    } catch (err) {
+      alert("Ошибка при сохранении: " + err.message);
+    }
+  }
+
+  async function sendPasswordReset() {
+    try {
+      await auth.sendPasswordResetEmail(auth.currentUser.email);
+      alert(`✅ Ссылка для смены пароля отправлена на почту:\n${auth.currentUser.email}`);
+    } catch (err) {
+      alert("Ошибка: " + err.message);
+    }
+  }
+
+  // Запрос на Push-уведомления
+  function requestNotificationAccess() {
+    if ("Notification" in window) {
+      Notification.requestPermission().then(permission => {
+        if (permission === "granted") {
+          alert("✅ Push-уведомления успешно включены!");
+          new Notification("Ala-Too Tasks", {
+            body: "Уведомления о новых задачах активны.",
+            icon: "icon.svg"
+          });
+        } else {
+          alert("Уведомления заблокированы в настройках браузера.");
+        }
+      });
+    } else {
+      alert("Ваш браузер не поддерживает Push-уведомления.");
+    }
+  }
+
+  function showNewTaskNotification(task) {
+    if ("Notification" in window && Notification.permission === "granted") {
+      new Notification("🚨 Новое поручение директора!", {
+        body: `${task.title}\nДедлайн: ${task.deadline}`,
+        icon: "icon.svg"
+      });
+    }
+  }
+
   function initAppListeners() {
     const isDirector = (currentUserProfile.role === 'director');
     document.getElementById("directorBlock").style.display = isDirector ? "block" : "none";
 
-    // Слушатель всех сотрудников (для выпадающего списка у директора)
     if (isDirector) {
       db.collection("users").onSnapshot(snapshot => {
         allUsers = [];
@@ -458,13 +566,26 @@
       });
     }
 
-    // Слушатель задач в реальном времени
+    // Слушатель задач в реальном времени с проверкой новых уведомлений
     db.collection("tasks").onSnapshot(snapshot => {
-      tasks = [];
-      snapshot.forEach(doc => {
-        tasks.push({ id: doc.id, ...doc.data() });
+      const newTasks = [];
+      
+      snapshot.docChanges().forEach(change => {
+        if (change.type === "added" && !isInitialLoad) {
+          const t = change.doc.data();
+          if (currentUserProfile && t.assignee === currentUserProfile.name) {
+            showNewTaskNotification(t);
+          }
+        }
       });
+
+      snapshot.forEach(doc => {
+        newTasks.push({ id: doc.id, ...doc.data() });
+      });
+
+      tasks = newTasks;
       tasks.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+      isInitialLoad = false;
       renderApp();
     });
   }
