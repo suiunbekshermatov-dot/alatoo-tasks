@@ -1,0 +1,17 @@
+{
+  "name": "Ala-Too Tasks",
+  "short_name": "AlaToo Tasks",
+  "description": "Система учета и контроля поручений колледжа Ала-Тоо",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0c2340",
+  "theme_color": "#0c2340",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
