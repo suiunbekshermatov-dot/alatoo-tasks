@@ -190,6 +190,9 @@
     .badge-done { background: var(--success-bg); color: var(--success-text); }
     .badge-delayed { background: var(--warning-bg); color: var(--warning-text); }
     .badge-overdue { background: var(--alatoo-red-soft); color: var(--alatoo-red); }
+    
+    .badge-origin-director { background: #e0e7ff; color: #3730a3; }
+    .badge-origin-staff { background: #f1f5f9; color: #475569; }
 
     .history-card {
       background: #fffdf5;
@@ -320,17 +323,22 @@
       </div>
     </div>
 
-    <!-- Блок создания поручений для Директора -->
-    <div class="card" id="directorBlock" style="display:none;">
-      <h2 style="font-size:15px; font-weight:700; color:var(--alatoo-blue); margin-bottom:10px;">➕ Новое поручение директора</h2>
+    <!-- Блок создания поручений / задач (доступен всем) -->
+    <div class="card" id="taskCreateBlock" style="display:none;">
+      <h2 id="taskBlockTitle" style="font-size:15px; font-weight:700; color:var(--alatoo-blue); margin-bottom:10px;">➕ Новая задача</h2>
       <form id="taskCreateForm" onsubmit="createTask(event)">
-        <input type="text" id="tTitle" placeholder="Тема поручения..." required />
-        <label>ОТВЕТСТВЕННЫЙ СОТРУДНИК:</label>
-        <select id="tAssignee" required></select>
+        <input type="text" id="tTitle" placeholder="Тема поручения или задачи..." required />
+        
+        <!-- Выбор исполнителя (виден директору, скрыт для преподавателя) -->
+        <div id="assigneeWrapper">
+          <label>ОТВЕТСТВЕННЫЙ СОТРУДНИК:</label>
+          <select id="tAssignee"></select>
+        </div>
+
         <label>СРОК СДАЧИ (ДЕДЛАЙН):</label>
         <input type="date" id="tDeadline" required />
         <textarea id="tDesc" rows="2" placeholder="Детали, указания и требования к результату..."></textarea>
-        <button type="submit" class="btn-main">Назначить поручение</button>
+        <button type="submit" class="btn-main" id="btnTaskSubmit">Сохранить</button>
       </form>
     </div>
 
@@ -551,9 +559,15 @@
 
   function initAppListeners() {
     const isDirector = (currentUserProfile.role === 'director');
-    document.getElementById("directorBlock").style.display = isDirector ? "block" : "none";
+    
+    // Блок создания теперь виден ВСЕМ
+    document.getElementById("taskCreateBlock").style.display = "block";
 
     if (isDirector) {
+      document.getElementById("taskBlockTitle").textContent = "➕ Новое поручение директора";
+      document.getElementById("btnTaskSubmit").textContent = "Назначить поручение";
+      document.getElementById("assigneeWrapper").style.display = "block";
+
       db.collection("users").onSnapshot(snapshot => {
         allUsers = [];
         const select = document.getElementById("tAssignee");
@@ -564,6 +578,10 @@
           select.innerHTML += `<option value="${u.name}">${u.name} (${u.email})</option>`;
         });
       });
+    } else {
+      document.getElementById("taskBlockTitle").textContent = "➕ Моя личная задача";
+      document.getElementById("btnTaskSubmit").textContent = "Добавить себе задачу";
+      document.getElementById("assigneeWrapper").style.display = "none";
     }
 
     // Слушатель задач в реальном времени с проверкой новых уведомлений
@@ -668,6 +686,11 @@
       else if (overdue) badge = `<span class="badge badge-overdue">🚨 Просрочено</span>`;
       else if (t.status === "delayed") badge = `<span class="badge badge-delayed">Перенесено</span>`;
 
+      // Метка типа задачи (поручение директора или личная)
+      const originBadge = (t.createdByRole === 'director') 
+        ? `<span class="badge badge-origin-director">🏛️ Поручение директора</span>`
+        : `<span class="badge badge-origin-staff">👤 Личная задача</span>`;
+
       let historyLog = "";
       if (t.history && t.history.length > 0) {
         historyLog = t.history.map(h => `
@@ -697,7 +720,10 @@
         </div>
         <div class="task-title-row">
           <div class="task-title">${t.title}</div>
-          <div>${badge}</div>
+          <div style="display:flex; gap:4px; align-items:center;">
+            ${originBadge}
+            ${badge}
+          </div>
         </div>
         <div class="task-desc">${t.desc || "Без описания"}</div>
         ${historyLog}
@@ -709,17 +735,35 @@
 
   function createTask(e) {
     e.preventDefault();
+    const isDirector = (currentUserProfile.role === 'director');
+    
+    // Если директор — берем выбранного из селекта, если сотрудник — назначает на себя
+    const targetAssignee = isDirector 
+      ? document.getElementById("tAssignee").value 
+      : currentUserProfile.name;
+
+    if (!targetAssignee) {
+      alert("Не удалось определить ответственного сотрудника.");
+      return;
+    }
+
     const newTask = {
-      title: document.getElementById("tTitle").value,
-      assignee: document.getElementById("tAssignee").value,
+      title: document.getElementById("tTitle").value.trim(),
+      assignee: targetAssignee,
       deadline: document.getElementById("tDeadline").value,
-      desc: document.getElementById("tDesc").value,
+      desc: document.getElementById("tDesc").value.trim(),
       status: "pending",
+      createdByRole: currentUserProfile.role,
       history: [],
       createdAt: Date.now()
     };
-    db.collection("tasks").add(newTask);
-    document.getElementById("taskCreateForm").reset();
+
+    db.collection("tasks").add(newTask).then(() => {
+      document.getElementById("taskCreateForm").reset();
+      alert("✅ Задача успешно добавлена!");
+    }).catch(err => {
+      alert("Ошибка при сохранении: " + err.message);
+    });
   }
 
   function finishTask(id) {
